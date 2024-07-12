@@ -25,4 +25,37 @@ yarn run build-api-doc
 
 ## Production build
 
-To be defined.
+1. Build the image:
+   ```sh
+   docker build -t quay.io/artemiscloud/activemq-artemis-jolokia-api-server:latest .
+   ```
+2. Push the image to image registry:
+   ```sh
+   docker push quay.io/artemiscloud/activemq-artemis-jolokia-api-server:latest
+   ```
+
+### deploy the service
+
+```sh
+./deploy.sh [-i <image> -n]
+```
+
+The optional `-i <image>` (or `--image <image>`) argument allows you to pass in
+the plugin image. If not specified the default
+`quay.io/artemiscloud/activemq-artemis-jolokia-api-server:latest` is
+deployed. for example:
+
+```sh
+./deploy.sh -i quay.io/<repo-username>/activemq-artemis-jolokia-api-server:1.0.1
+```
+
+The `deploy.sh` script uses `oc kustomize` (built-in
+[kustomize](https://github.com/kubernetes-sigs/kustomize)) command to configure
+and deploy the plugin using resources and patches defined under ./deploy
+directory.
+
+To undeploy, run
+
+```sh
+./undeploy.sh
+```

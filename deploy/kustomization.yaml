@@ -1,0 +1,6 @@
+namespace: activemq-artemis-jolokia-api-server
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml

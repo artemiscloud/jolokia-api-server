@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: activemq-artemis-jolokia-api-server
+  name: activemq-artemis-jolokia-api-server
+  labels:
+    app: activemq-artemis-jolokia-api-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq-artemis-jolokia-api-server
+  template:
+    metadata:
+      labels:
+        app: activemq-artemis-jolokia-api-server
+    spec:
+      containers:
+        - name: activemq-artemis-jolokia-api-server
+          image: quay.io/artemiscloud/activemq-artemis-jolokia-api-server:latest
+          ports:
+            - containerPort: 9443
+              protocol: TCP
+          args: ['dist/app.js']
+          command:
+            - node
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+          volumeMounts:
+            - name: plugin-serving-cert
+              readOnly: true
+              mountPath: /var/serving-cert
+      volumes:
+        - name: plugin-serving-cert
+          secret:
+            secretName: plugin-serving-cert
+            defaultMode: 420
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%

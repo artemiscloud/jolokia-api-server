@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: plugin-serving-cert
+  name: activemq-artemis-jolokia-api-server
+  namespace: activemq-artemis-jolokia-api-server
+  labels:
+    app: activemq-artemis-jolokia-api-server
+    app.kubernetes.io/component: activemq-artemis-jolokia-api-server
+    app.kubernetes.io/instance: activemq-artemis-jolokia-api-server
+    app.kubernetes.io/part-of: activemq-artemis-jolokia-api-server
+spec:
+  ports:
+    - name: 443-tcp
+      protocol: TCP
+      port: 9443
+      targetPort: 9443
+  selector:
+    app: activemq-artemis-jolokia-api-server
+  type: ClusterIP
+  sessionAffinity: None
