@@ -1,0 +1,63 @@
+name: Release
+
+env:
+  IMAGE_NAME: activemq-artemis-jolokia-api-server
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+
+      - name: Create release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          git fetch --tags
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          RELEASE_TAG="$(cat package.json | jq -r '.version')"
+          RELEASE_TAG_COMMIT="$(git rev-list -n 1 ${RELEASE_TAG} || true)"
+          if [ "$RELEASE_TAG_COMMIT" != "$HEAD_COMMIT" ]; then
+            git config user.name 'artemiscloud-bot'
+            git config user.email 'bot@artemiscloud.io'
+            git tag -a ${RELEASE_TAG} -m ${RELEASE_TAG} --force
+            git push origin $RELEASE_TAG --force
+          fi
+
+      - name: Set outputs
+        id: vars
+        run: |
+         echo "image_tag=$(git describe --exact-match --tags | sed 's/v//')" >> $GITHUB_OUTPUT
+      - name: Check outputs
+        run: |
+         echo ${{ steps.vars.outputs.image_tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Build the image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: latest ${{ steps.vars.outputs.image_tag }}
+          platforms: linux/amd64, linux/arm64
+          context: .
+          dockerfiles: |
+            ./Dockerfile
+
+      - name: Push the image to quay.io
+        id: push-to-quay
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: quay.io/${{ secrets.QUAY_NAMESPACE }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
