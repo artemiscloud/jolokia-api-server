@@ -30,8 +30,6 @@ FROM registry.access.redhat.com/ubi8/nodejs-20-minimal:latest
 
 USER root
 
-WORKDIR /app
-
 COPY --from=BUILD_IMAGE /usr/src/app/dist /usr/share/amq-spp/dist
 COPY --from=BUILD_IMAGE /usr/src/app/.env /usr/share/amq-spp/.env
 
@@ -64,5 +62,5 @@ CMD ["node", "dist/app.js"]
 ## Labels
 LABEL name="artemiscloud/activemq-artemis-jolokia-api-server"
 LABEL description="ActiveMQ Artemis Jolokia api-server"
-LABEL maintainer="Roderick Kieley <rkieley@redhat.com>"
+LABEL maintainer="Howard Gao <hgao@redhat.com>"
 LABEL version="0.1.1"
