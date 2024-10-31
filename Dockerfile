@@ -26,29 +26,18 @@ RUN yarn install  --network-timeout 1000000
 ## Build application
 RUN yarn build
 
-FROM registry.access.redhat.com/ubi8/nodejs-20-minimal:latest
+## Gather productization dependencies
+RUN yarn install --network-timeout 1000000 --modules-folder node_modules_prod --production
 
-USER root
+FROM registry.access.redhat.com/ubi8/nodejs-20-minimal:latest
 
 COPY --from=BUILD_IMAGE /usr/src/app/dist /usr/share/amq-spp/dist
 COPY --from=BUILD_IMAGE /usr/src/app/.env /usr/share/amq-spp/.env
+COPY --from=BUILD_IMAGE /usr/src/app/node_modules_prod /usr/share/amq-spp/node_modules
 
 WORKDIR /usr/share/amq-spp
 
-RUN npm install connect \
-cors \
-express \
-express-openapi-validator \
-swagger-routes-express \
-typescript \
-validator \
-yaml \
-base-64 \
-jsonwebtoken \
-dotenv \
-express-rate-limit \
-node-fetch@2 \
-@peculiar/x509
+USER root
 
 RUN echo "node /usr/share/amq-spp/dist/app.js" > run.sh
 RUN chmod +x run.sh
