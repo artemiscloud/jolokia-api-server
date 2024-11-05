@@ -1,6 +1,7 @@
 import * as express from 'express';
 import {
   ArtemisJolokia,
+  ComponentType,
   JolokiaExecResponse,
   JolokiaObjectDetailsType,
   JolokiaReadResponse,
@@ -25,9 +26,9 @@ const parseProps = (rawProps: string): Map<string, string> => {
 
 export const getBrokers = (_: express.Request, res: express.Response): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const comps = jolokia.getComponents(ArtemisJolokia.BROKER);
+    const comps = jolokia.getComponents(ComponentType.BROKER);
 
     comps
       .then((result: any[]) => {
@@ -57,9 +58,9 @@ export const getClusterConnections = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const comps = jolokia.getComponents(ArtemisJolokia.CLUSTER_CONNECTION);
+    const comps = jolokia.getComponents(ComponentType.CLUSTER_CONNECTION);
 
     comps
       .then((result: any[]) => {
@@ -93,14 +94,19 @@ export const readClusterConnectionAttributes = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
     const clusterConnectionName = req.query.name as string;
     const clusterConnectionAttrNames = req.query.attrs as string[];
 
-    const attributes = jolokia.readClusterConnectionAttributes(
-      clusterConnectionName,
+    const param = new Map<string, string>();
+    param.set('CLUSTER_CONNECTION_NAME', clusterConnectionName);
+
+    const attributes = jolokia.readComponentAttributes(
+      ComponentType.CLUSTER_CONNECTION,
+      param,
       clusterConnectionAttrNames,
     );
+
     attributes
       .then((result: JolokiaReadResponse[]) => {
         res.json(result);
@@ -123,14 +129,17 @@ export const getClusterConnectionDetails = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
     const clusterConnectionName = req.query.name;
 
     const param = new Map<string, string>();
     param.set('CLUSTER_CONNECTION_NAME', <string>clusterConnectionName);
 
-    const compDetails = jolokia.getClusterConnectionDetails(param);
+    const compDetails = jolokia.readComponentDetails(
+      ComponentType.CLUSTER_CONNECTION,
+      param,
+    );
 
     compDetails
       .then((result: JolokiaObjectDetailsType) => {
@@ -158,46 +167,8 @@ export const execClusterConnectionOperation = (
   req: express.Request,
   res: express.Response,
 ): void => {
-  try {
-    const jolokia = res.locals.jolokia;
-
-    const operationRef = req.body as OperationRef;
-    const strArgs: string[] = [];
-    let strSignature = operationRef.signature.name + '(';
-    operationRef.signature.args.forEach((arg, item, array) => {
-      strSignature = strSignature + arg.type;
-      if (item < array.length - 1) {
-        strSignature = strSignature + ',';
-      }
-      strArgs.push(arg.value);
-    });
-    strSignature = strSignature + ')';
-
-    const clusterConnectionName = req.query.name;
-
-    const param = new Map<string, string>();
-    param.set('CLUSTER_CONNECTION_NAME', <string>clusterConnectionName);
-
-    const resp = jolokia.execClusterConnectionOperation(
-      param,
-      strSignature,
-      strArgs,
-    );
-    resp
-      .then((result: JolokiaExecResponse) => {
-        res.json(result);
-      })
-      .catch((error: any) => {
-        logger.error(error);
-        res.status(500).json({ status: 'error', message: 'server error' });
-      });
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({
-      status: 'error',
-      message: 'server error: ' + JSON.stringify(err),
-    });
-  }
+  req.query.type = ComponentType.CLUSTER_CONNECTION;
+  execMBeanOperation(req, res);
 };
 
 export const getAcceptors = (
@@ -205,9 +176,9 @@ export const getAcceptors = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const comps = jolokia.getComponents(ArtemisJolokia.ACCEPTOR);
+    const comps = jolokia.getComponents(ComponentType.ACCEPTOR);
 
     comps
       .then((result: any[]) => {
@@ -241,14 +212,19 @@ export const readAcceptorAttributes = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
     const acceptorName = req.query.name as string;
     const acceptorAttrNames = req.query.attrs as string[];
 
-    const attributes = jolokia.readAcceptorAttributes(
-      acceptorName,
+    const param = new Map<string, string>();
+    param.set('ACCEPTOR_NAME', acceptorName);
+
+    const attributes = jolokia.readComponentAttributes(
+      ComponentType.ACCEPTOR,
+      param,
       acceptorAttrNames,
     );
+
     attributes
       .then((result: JolokiaReadResponse[]) => {
         res.json(result);
@@ -271,9 +247,9 @@ export const getBrokerComponents = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const comps = jolokia.getComponents(ArtemisJolokia.BROKER_COMPONENTS);
+    const comps = jolokia.getComponents(ComponentType.ALL);
 
     comps
       .then((result: any[]) => {
@@ -296,9 +272,9 @@ export const getAddresses = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const comps = jolokia.getComponents(ArtemisJolokia.ADDRESS);
+    const comps = jolokia.getComponents(ComponentType.ADDRESS);
     comps
       .then((result: any[]) => {
         res.json(
@@ -331,14 +307,19 @@ export const readAddressAttributes = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
     const addressName = req.query.name as string;
     const addressAttrNames = req.query.attrs as string[];
 
-    const attributes = jolokia.readAddressAttributes(
-      addressName,
+    const param = new Map<string, string>();
+    param.set('ADDRESS_NAME', addressName);
+
+    const attributes = jolokia.readComponentAttributes(
+      ComponentType.ADDRESS,
+      param,
       addressAttrNames,
     );
+
     attributes
       .then((result: JolokiaReadResponse[]) => {
         res.json(result);
@@ -363,12 +344,12 @@ export const getQueues = (
   try {
     const addressName = req.query.address || '*';
 
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
     const param = new Map<string, string>();
     const name = <string>addressName;
     param.set('ADDRESS_NAME', name);
-    const comps = jolokia.getComponents(ArtemisJolokia.QUEUE, param);
+    const comps = jolokia.getComponents(ComponentType.QUEUE, param);
 
     comps
       .then((result: any[]) => {
@@ -409,18 +390,23 @@ export const readQueueAttributes = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
     const queueName = req.query.name as string;
     const routingType = req.query['routing-type'] as string;
     const addressName = req.query.address as string;
     const queueAttrNames = req.query.attrs as string[];
 
-    const attributes = jolokia.readQueueAttributes(
-      queueName,
-      routingType,
-      addressName,
+    const param = new Map<string, string>();
+    param.set('QUEUE_NAME', queueName);
+    param.set('ROUTING_TYPE', routingType);
+    param.set('ADDRESS_NAME', addressName);
+
+    const attributes = jolokia.readComponentAttributes(
+      ComponentType.QUEUE,
+      param,
       queueAttrNames,
     );
+
     attributes
       .then((result: JolokiaReadResponse[]) => {
         res.json(result);
@@ -443,13 +429,15 @@ export const getBrokerDetails = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
-    const compDetails = jolokia.getBrokerDetails();
+    const compDetails = jolokia.readComponentDetails(
+      ComponentType.BROKER,
+      null,
+    );
 
     compDetails
       .then((result: JolokiaObjectDetailsType) => {
-        // Update the op to conform to the openapi output format
         Object.entries(result.op).forEach(([key, value]) => {
           if (!Array.isArray(value)) {
             result.op[key] = [value];
@@ -493,37 +481,10 @@ export const execBrokerOperation = (
   req: express.Request,
   res: express.Response,
 ): void => {
-  try {
-    const jolokia = res.locals.jolokia;
-
-    const operationRef = req.body as OperationRef;
-    const strArgs: string[] = [];
-    let strSignature = operationRef.signature.name + '(';
-    operationRef.signature.args.forEach((arg, item, array) => {
-      strSignature = strSignature + arg.type;
-      if (item < array.length - 1) {
-        strSignature = strSignature + ',';
-      }
-      strArgs.push(arg.value);
-    });
-    strSignature = strSignature + ')';
-
-    const resp = jolokia.execBrokerOperation(strSignature, strArgs);
-    resp
-      .then((result: JolokiaExecResponse) => {
-        res.json(result);
-      })
-      .catch((error: any) => {
-        logger.error(error);
-        res.status(500).json({ status: 'error', message: 'server error' });
-      });
-  } catch (err) {
-    logger.error(err);
-    res.status(500).json({
-      status: 'error',
-      message: 'server error: ' + JSON.stringify(err),
-    });
-  }
+  const jolokia = res.locals.jolokia as ArtemisJolokia;
+  req.query.type = ComponentType.BROKER;
+  req.query.name = jolokia.brokerName;
+  execMBeanOperation(req, res);
 };
 
 export const readBrokerAttributes = (
@@ -531,10 +492,15 @@ export const readBrokerAttributes = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
     const brokerAttrNames = req.query.names as string[];
 
-    const attributes = jolokia.readBrokerAttributes(brokerAttrNames);
+    const attributes = jolokia.readComponentAttributes(
+      ComponentType.BROKER,
+      null,
+      brokerAttrNames,
+    );
+
     attributes
       .then((result: JolokiaReadResponse[]) => {
         res.json(result);
@@ -557,14 +523,17 @@ export const getAddressDetails = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
     const addressName = req.query.name;
 
     const param = new Map<string, string>();
     param.set('ADDRESS_NAME', <string>addressName);
 
-    const compDetails = jolokia.getAddressDetails(param);
+    const compDetails = jolokia.readComponentDetails(
+      ComponentType.ADDRESS,
+      param,
+    );
 
     compDetails
       .then((result: JolokiaObjectDetailsType) => {
@@ -593,14 +562,17 @@ export const getAcceptorDetails = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
     const acceptorName = req.query.name;
 
     const param = new Map<string, string>();
     param.set('ACCEPTOR_NAME', <string>acceptorName);
 
-    const compDetails = jolokia.getAcceptorDetails(param);
+    const compDetails = jolokia.readComponentDetails(
+      ComponentType.ACCEPTOR,
+      param,
+    );
 
     compDetails
       .then((result: JolokiaObjectDetailsType) => {
@@ -629,7 +601,7 @@ export const getQueueDetails = (
   res: express.Response,
 ): void => {
   try {
-    const jolokia = res.locals.jolokia;
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
 
     const queueName = req.query.name;
     const addressName = req.query.addressName
@@ -642,7 +614,10 @@ export const getQueueDetails = (
     param.set('QUEUE_NAME', <string>queueName);
     param.set('ROUTING_TYPE', <string>routingType);
 
-    const compDetails = jolokia.getQueueDetails(param);
+    const compDetails = jolokia.readComponentDetails(
+      ComponentType.QUEUE,
+      param,
+    );
 
     compDetails
       .then((result: JolokiaObjectDetailsType) => {
@@ -651,6 +626,67 @@ export const getQueueDetails = (
             result.op[key] = [value];
           }
         });
+        res.json(result);
+      })
+      .catch((error: any) => {
+        logger.error(error);
+        res.status(500).json({ status: 'error', message: 'server error' });
+      });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({
+      status: 'error',
+      message: 'server error: ' + JSON.stringify(err),
+    });
+  }
+};
+
+export const execMBeanOperation = (
+  req: express.Request,
+  res: express.Response,
+): void => {
+  try {
+    const jolokia = res.locals.jolokia as ArtemisJolokia;
+
+    const operationRef = req.body as OperationRef;
+    const strArgs: string[] = [];
+    let strSignature = operationRef.signature.name + '(';
+    operationRef.signature.args.forEach((arg, item, array) => {
+      strSignature = strSignature + arg.type;
+      if (item < array.length - 1) {
+        strSignature = strSignature + ',';
+      }
+      strArgs.push(arg.value);
+    });
+    strSignature = strSignature + ')';
+
+    const compType = req.query.type as ComponentType;
+    const compName = req.query.name as string;
+
+    //name1=value,name2=value...
+    const extrArgs = req.query.extrArgs as string;
+    const param = new Map<string, string>();
+    if (extrArgs) {
+      const valueKeyPairs = extrArgs.split(',');
+      valueKeyPairs.forEach((value) => {
+        const pair = value.split('=');
+        if (pair.length === 2) {
+          param.set(pair[0], pair[1]);
+        } else {
+          throw Error('invalid extra arg: ' + value);
+        }
+      });
+    }
+
+    const resp = jolokia.execComponentOperation(
+      compType,
+      compName,
+      param,
+      strSignature,
+      strArgs,
+    );
+    resp
+      .then((result: JolokiaExecResponse) => {
         res.json(result);
       })
       .catch((error: any) => {

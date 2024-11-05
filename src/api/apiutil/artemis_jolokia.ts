@@ -40,6 +40,16 @@ const queueComponentPattern =
   'org.apache.activemq.artemis:address="ADDRESS_NAME",broker="BROKER_NAME",component=addresses,queue="QUEUE_NAME",routing-type="ROUTING_TYPE",subcomponent=queues';
 const clusterConnectionComponentPattern =
   'org.apache.activemq.artemis:broker="BROKER_NAME",component=cluster-connections,name="CLUSTER_CONNECTION_NAME"';
+
+export enum ComponentType {
+  ALL = 'broker-components',
+  BROKER = 'broker',
+  ADDRESS = 'address',
+  QUEUE = 'queue',
+  ACCEPTOR = 'acceptor',
+  CLUSTER_CONNECTION = 'cluster-connection',
+}
+
 export class ArtemisJolokia {
   readonly username: string;
   readonly password: string;
@@ -49,47 +59,35 @@ export class ArtemisJolokia {
   brokerName: string;
   readonly baseUrl: string;
 
-  static readonly BROKER = 'broker';
-  static readonly BROKER_DETAILS = 'broker-details';
-  static readonly BROKER_COMPONENTS = 'broker-components';
-  static readonly ADDRESS = 'address';
-  static readonly QUEUE = 'queue';
-  static readonly ACCEPTOR = 'acceptor';
-  static readonly QUEUE_DETAILS = 'queue-details';
-  static readonly ADDRESS_DETAILS = 'address-details';
-  static readonly ACCEPTOR_DETAILS = 'acceptor-details';
-  static readonly CLUSTER_CONNECTION_DETAILS = 'cluster-connection-details';
-  static readonly CLUSTER_CONNECTION = 'cluster-connection';
+  static readonly KEY_COMPONENT_TYPE = 'component-type';
+  static readonly KEY_COMPONENT_NAME = 'component-name';
 
-  componentMap = new Map<string, string>([
-    [ArtemisJolokia.BROKER, brokerSearchPattern],
-    [ArtemisJolokia.BROKER_COMPONENTS, brokerComponentsSearchPattern],
-    [ArtemisJolokia.ADDRESS, addressComponentsSearchPattern],
-    [ArtemisJolokia.QUEUE, queueComponentsSearchPattern],
-    [ArtemisJolokia.ACCEPTOR, acceptorComponentsSearchPattern],
+  componentMap = new Map<ComponentType, string>([
+    [ComponentType.BROKER, brokerSearchPattern],
+    [ComponentType.ALL, brokerComponentsSearchPattern],
+    [ComponentType.ADDRESS, addressComponentsSearchPattern],
+    [ComponentType.QUEUE, queueComponentsSearchPattern],
+    [ComponentType.ACCEPTOR, acceptorComponentsSearchPattern],
     [
-      ArtemisJolokia.CLUSTER_CONNECTION,
+      ComponentType.CLUSTER_CONNECTION,
       clusterConnectionComponentsSearchPattern,
     ],
   ]);
 
-  componentDetailsMap = new Map<string, string>([
-    [ArtemisJolokia.BROKER_DETAILS, brokerDetailsListPattern],
-    [ArtemisJolokia.QUEUE_DETAILS, queueDetailsListPattern],
-    [ArtemisJolokia.ADDRESS_DETAILS, addressDetailsListPattern],
-    [ArtemisJolokia.ACCEPTOR_DETAILS, acceptorDetailsListPattern],
-    [
-      ArtemisJolokia.CLUSTER_CONNECTION_DETAILS,
-      clusterConnectionDetailsListPattern,
-    ],
+  componentDetailsMap = new Map<ComponentType, string>([
+    [ComponentType.BROKER, brokerDetailsListPattern],
+    [ComponentType.QUEUE, queueDetailsListPattern],
+    [ComponentType.ADDRESS, addressDetailsListPattern],
+    [ComponentType.ACCEPTOR, acceptorDetailsListPattern],
+    [ComponentType.CLUSTER_CONNECTION, clusterConnectionDetailsListPattern],
   ]);
 
-  componentNameMap = new Map<string, string>([
-    [ArtemisJolokia.BROKER, brokerComponentPattern],
-    [ArtemisJolokia.ADDRESS, addressComponentPattern],
-    [ArtemisJolokia.ACCEPTOR, acceptorComponentPattern],
-    [ArtemisJolokia.QUEUE, queueComponentPattern],
-    [ArtemisJolokia.CLUSTER_CONNECTION, clusterConnectionComponentPattern],
+  componentNameMap = new Map<ComponentType, string>([
+    [ComponentType.BROKER, brokerComponentPattern],
+    [ComponentType.ADDRESS, addressComponentPattern],
+    [ComponentType.ACCEPTOR, acceptorComponentPattern],
+    [ComponentType.QUEUE, queueComponentPattern],
+    [ComponentType.CLUSTER_CONNECTION, clusterConnectionComponentPattern],
   ]);
 
   constructor(
@@ -126,12 +124,12 @@ export class ArtemisJolokia {
   };
 
   getComponents = async (
-    name: string,
+    compType: ComponentType,
     params?: Map<string, string>,
   ): Promise<Array<string>> => {
     const headers = this.getAuthHeaders();
 
-    let searchPattern = this.componentMap.get(name);
+    let searchPattern = this.componentMap.get(compType);
 
     if (typeof params !== 'undefined') {
       for (const [key, value] of params) {
@@ -156,52 +154,16 @@ export class ArtemisJolokia {
     return reply;
   };
 
-  getBrokerDetails = async (): Promise<JolokiaObjectDetailsType> => {
-    const headers = this.getAuthHeaders();
-
-    let searchPattern = this.componentDetailsMap.get(
-      ArtemisJolokia.BROKER_DETAILS,
-    );
-
-    searchPattern = searchPattern?.replace('BROKER_NAME', this.brokerName);
-
-    const url = this.baseUrl + 'list/' + searchPattern;
-
-    const reply = await fetch(url, {
-      method: 'GET',
-      headers: headers,
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      })
-      .then((message) => {
-        const resp: JolokiaListResponseType = JSON.parse(message);
-        if (resp.status !== 200) {
-          throw resp.error;
-        }
-        return resp.value;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  getAcceptorDetails = async (
-    params?: Map<string, string>,
+  readComponentDetails = async (
+    compType: ComponentType,
+    param?: Map<string, string>,
   ): Promise<JolokiaObjectDetailsType> => {
     const headers = this.getAuthHeaders();
 
-    let searchPattern = this.componentDetailsMap.get(
-      ArtemisJolokia.ACCEPTOR_DETAILS,
-    );
+    let searchPattern = this.componentDetailsMap.get(compType);
 
-    if (typeof params !== 'undefined') {
-      for (const [key, value] of params) {
+    if (param) {
+      for (const [key, value] of param) {
         searchPattern = searchPattern?.replace(key, value);
       }
     }
@@ -233,195 +195,9 @@ export class ArtemisJolokia {
     return reply;
   };
 
-  getAddressDetails = async (
-    params?: Map<string, string>,
-  ): Promise<JolokiaObjectDetailsType> => {
-    const headers = this.getAuthHeaders();
-
-    let searchPattern = this.componentDetailsMap.get(
-      ArtemisJolokia.ADDRESS_DETAILS,
-    );
-
-    if (typeof params !== 'undefined') {
-      for (const [key, value] of params) {
-        searchPattern = searchPattern?.replace(key, value);
-      }
-    }
-    searchPattern = searchPattern?.replace('BROKER_NAME', this.brokerName);
-
-    const url = this.baseUrl + 'list/' + searchPattern;
-
-    const reply = await fetch(url, {
-      method: 'GET',
-      headers: headers,
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      })
-      .then((message) => {
-        const resp: JolokiaListResponseType = JSON.parse(message);
-        if (resp.status !== 200) {
-          throw resp.error;
-        }
-        return resp.value;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  getClusterConnectionDetails = async (
-    params?: Map<string, string>,
-  ): Promise<JolokiaObjectDetailsType> => {
-    const headers = this.getAuthHeaders();
-
-    let searchPattern = this.componentDetailsMap.get(
-      ArtemisJolokia.CLUSTER_CONNECTION_DETAILS,
-    );
-
-    if (typeof params !== 'undefined') {
-      for (const [key, value] of params) {
-        searchPattern = searchPattern?.replace(key, value);
-      }
-    }
-    searchPattern = searchPattern?.replace('BROKER_NAME', this.brokerName);
-
-    const url = this.baseUrl + 'list/' + searchPattern;
-
-    const reply = await fetch(url, {
-      method: 'GET',
-      headers: headers,
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      })
-      .then((message) => {
-        const resp: JolokiaListResponseType = JSON.parse(message);
-        if (resp.status !== 200) {
-          throw resp.error;
-        }
-        return resp.value;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  readBrokerAttributes = async (
-    brokerAttrNames: string[],
-  ): Promise<JolokiaReadResponse[]> => {
-    const headers = this.getAuthHeaders();
-    headers.set('Content-Type', 'application/json');
-
-    const reply = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: headers,
-      body: this.getPostBodyForAttributes(
-        ArtemisJolokia.BROKER,
-        new Map<string, string>(),
-        brokerAttrNames,
-      ),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      }) //directly use json()?
-      .then((message) => {
-        const resp: JolokiaReadResponse[] = JSON.parse(message);
-        return resp;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  readAddressAttributes = async (
-    addressName: string,
-    addressAttrNames: string[],
-  ): Promise<JolokiaReadResponse[]> => {
-    const headers = this.getAuthHeaders();
-    headers.set('Content-Type', 'application/json');
-
-    const param = new Map<string, string>();
-    param.set('ADDRESS_NAME', addressName);
-
-    const reply = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: headers,
-      body: this.getPostBodyForAttributes(
-        ArtemisJolokia.ADDRESS,
-        param,
-        addressAttrNames,
-      ),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      }) //directly use json()?
-      .then((message) => {
-        const resp: JolokiaReadResponse[] = JSON.parse(message);
-        return resp;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  readClusterConnectionAttributes = async (
-    clusterConnectionName: string,
-    clusterConnectionAttrNames: string[],
-  ): Promise<JolokiaReadResponse[]> => {
-    const headers = this.getAuthHeaders();
-    headers.set('Content-Type', 'application/json');
-
-    const param = new Map<string, string>();
-    param.set('CLUSTER_CONNECTION_NAME', clusterConnectionName);
-
-    const reply = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: headers,
-      body: this.getPostBodyForAttributes(
-        ArtemisJolokia.CLUSTER_CONNECTION,
-        param,
-        clusterConnectionAttrNames,
-      ),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      }) //directly use json()?
-      .then((message) => {
-        const resp: JolokiaReadResponse[] = JSON.parse(message);
-        return resp;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  execClusterConnectionOperation = async (
+  execComponentOperation = async (
+    compType: ComponentType,
+    compName: string,
     param: Map<string, string>,
     signature: string,
     args: string[],
@@ -433,7 +209,8 @@ export class ArtemisJolokia {
       method: 'POST',
       headers: headers,
       body: this.getPostBodyForOperation(
-        ArtemisJolokia.CLUSTER_CONNECTION,
+        compType,
+        compName,
         param,
         signature,
         args,
@@ -456,139 +233,17 @@ export class ArtemisJolokia {
     return reply;
   };
 
-  execBrokerOperation = async (
-    signature: string,
-    args: string[],
-  ): Promise<JolokiaExecResponse> => {
-    const headers = this.getAuthHeaders();
-    headers.set('Content-Type', 'application/json');
-
-    const reply = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: headers,
-      body: this.getPostBodyForOperation(
-        ArtemisJolokia.BROKER,
-        new Map<string, string>(),
-        signature,
-        args,
-      ),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw response;
-        }
-      })
-      .then((jsonObj) => {
-        return jsonObj as JolokiaExecResponse;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  getQueueDetails = async (
-    params?: Map<string, string>,
-  ): Promise<JolokiaObjectDetailsType> => {
-    const headers = this.getAuthHeaders();
-
-    let searchPattern = this.componentDetailsMap.get(
-      ArtemisJolokia.QUEUE_DETAILS,
-    );
-
-    if (typeof params !== 'undefined') {
-      for (const [key, value] of params) {
-        searchPattern = searchPattern?.replace(key, value);
-      }
-    }
-    searchPattern = searchPattern?.replace('BROKER_NAME', this.brokerName);
-
-    const url = this.baseUrl + 'list/' + searchPattern;
-
-    const reply = await fetch(url, {
-      method: 'GET',
-      headers: headers,
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      }) //directly use json()?
-      .then((message) => {
-        const resp: JolokiaListResponseType = JSON.parse(message);
-        if (resp.status !== 200) {
-          throw resp.error;
-        }
-        return resp.value;
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    return reply;
-  };
-
-  readQueueAttributes = async (
-    queueName: string,
-    routingType: string,
-    addressName: string,
-    queueAttrNames: string[],
+  readComponentAttributes = async (
+    compType: ComponentType,
+    param: Map<string, string>,
+    attrNames: string[],
   ): Promise<JolokiaReadResponse[]> => {
     const headers = this.getAuthHeaders();
     headers.set('Content-Type', 'application/json');
-
-    const param = new Map<string, string>();
-    param.set('QUEUE_NAME', queueName);
-    param.set('ROUTING_TYPE', routingType);
-    param.set('ADDRESS_NAME', addressName);
-
     const reply = await fetch(this.baseUrl, {
       method: 'POST',
       headers: headers,
-      body: this.getPostBodyForAttributes(
-        ArtemisJolokia.QUEUE,
-        param,
-        queueAttrNames,
-      ),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        }
-        throw response;
-      }) //directly use json()?
-      .then((message) => {
-        const resp: JolokiaReadResponse[] = JSON.parse(message);
-        return resp;
-      })
-      .catch((err) => {
-        throw err;
-      });
-    return reply;
-  };
-
-  readAcceptorAttributes = async (
-    acceptorName: string,
-    acceptorAttrNames: string[],
-  ): Promise<JolokiaReadResponse[]> => {
-    const headers = this.getAuthHeaders();
-    headers.set('Content-Type', 'application/json');
-
-    const param = new Map<string, string>();
-    param.set('ACCEPTOR_NAME', acceptorName);
-
-    const reply = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: headers,
-      body: this.getPostBodyForAttributes(
-        ArtemisJolokia.ACCEPTOR,
-        param,
-        acceptorAttrNames,
-      ),
+      body: this.getPostBodyForAttributes(compType, param, attrNames),
     })
       .then((response) => {
         if (response.ok) {
@@ -607,7 +262,7 @@ export class ArtemisJolokia {
   };
 
   validateUser = async (): Promise<boolean> => {
-    const result = await this.getComponents(ArtemisJolokia.BROKER);
+    const result = await this.getComponents(ComponentType.BROKER);
     if (result.length === 1) {
       //org.apache.activemq.artemis:broker="amq-broker"
       this.brokerName = result[0].split('=', 2)[1];
@@ -620,16 +275,16 @@ export class ArtemisJolokia {
   };
 
   getPostBodyForAttributes = (
-    component: string,
+    compType: ComponentType,
     params?: Map<string, string>,
     attrs?: string[],
   ): string => {
     const bodyItems: JolokiaPostReadBodyItem[] = [];
-    let bean = this.componentNameMap.get(component) as string;
+    let bean = this.componentNameMap.get(compType) as string;
     if (!bean) {
       throw 'undefined bean';
     }
-    if (params !== undefined) {
+    if (params) {
       for (const [key, value] of params) {
         bean = bean.replace(key, value);
       }
@@ -648,21 +303,53 @@ export class ArtemisJolokia {
     return JSON.stringify([{ type: 'read', mbean: bean }]);
   };
 
+  getComponentNameKey(compType: ComponentType): string {
+    switch (compType) {
+      case ComponentType.ACCEPTOR: {
+        return 'ACCEPTOR_NAME';
+      }
+      case ComponentType.ADDRESS: {
+        return 'ADDRESS_NAME';
+      }
+      case ComponentType.BROKER: {
+        return '';
+      }
+      case ComponentType.CLUSTER_CONNECTION: {
+        return 'CLUSTER_CONNECTION_NAME';
+      }
+      case ComponentType.QUEUE: {
+        return 'QUEUE_NAME';
+      }
+      default:
+        return '';
+    }
+  }
+
   getPostBodyForOperation = (
-    component: string,
+    compType: ComponentType,
+    compName: string,
     params: Map<string, string>,
     signature: string,
     args?: string[],
   ): string => {
     const bodyItems: JolokiaPostExecBodyItem[] = [];
-    let bean = this.componentNameMap.get(component) as string;
+    let bean = this.componentNameMap.get(compType) as string;
     if (!bean) {
       throw 'undefined bean';
     }
+
     bean = bean.replace('BROKER_NAME', this.brokerName);
-    params.forEach((value, key) => {
-      bean = bean.replace(key, value);
-    });
+    const nameKey = this.getComponentNameKey(compType);
+    // nameKey is empty when compType is BROKER
+    if (nameKey) {
+      bean = bean.replace(nameKey, compName);
+    }
+
+    if (params) {
+      params.forEach((value, key) => {
+        bean = bean.replace(key, value);
+      });
+    }
 
     bodyItems.push({
       type: 'exec',
