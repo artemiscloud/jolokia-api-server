@@ -1394,7 +1394,6 @@ components:
           type: object
           required:
             - mbean
-            - arguments
             - type
             - operation
           properties:

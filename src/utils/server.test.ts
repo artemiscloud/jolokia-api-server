@@ -485,6 +485,66 @@ describe('test api server apis', () => {
     expect(JSON.stringify(value)).toEqual(JSON.stringify(jolokiaResp));
   });
 
+  [
+    {
+      request: {
+        mbean:
+          'org.apache.activemq.artemis:broker="amq-broker",component=cluster-connections,name="my-cluster"',
+        type: 'exec',
+        operation: 'start()',
+      },
+      value: null,
+      timestamp: 1730878513,
+      status: 200,
+    },
+  ];
+
+  it('test exec operation with no args', async () => {
+    const jolokiaResp = [
+      {
+        request: {
+          mbean:
+            'org.apache.activemq.artemis:broker="amq-broker",component=cluster-connections,name="my-cluster"',
+          type: 'exec',
+          operation: 'start()',
+        },
+        value: null,
+        timestamp: 1730878513,
+        status: 200,
+      },
+    ];
+
+    mockJolokia
+      .post(apiUrlPrefix + '/', (body) => {
+        if (
+          body.length === 1 &&
+          body[0].type === 'exec' &&
+          body[0].mbean ===
+            'org.apache.activemq.artemis:broker="amq-broker",component=cluster-connections,name="my-cluster"' &&
+          body[0].operation === 'start()'
+        ) {
+          return true;
+        }
+        return false;
+      })
+      .reply(200, JSON.stringify(jolokiaResp));
+
+    const resp = await doPost(
+      '/execClusterConnectionOperation?name=my-cluster',
+      JSON.stringify({
+        signature: {
+          name: 'start',
+          args: [],
+        },
+      }),
+      authToken,
+    );
+    expect(resp.ok).toBeTruthy();
+
+    const value = await resp.json();
+    expect(JSON.stringify(value)).toEqual(JSON.stringify(jolokiaResp));
+  });
+
   it('test brokerComponents', async () => {
     const result = [
       'org.apache.activemq.artemis:address="ExpiryQueue",broker="amq-broker",component=addresses,queue="ExpiryQueue",routing-type="anycast",subcomponent=queues',
