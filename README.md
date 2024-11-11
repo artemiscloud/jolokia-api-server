@@ -59,3 +59,14 @@ To undeploy, run
 ```sh
 ./undeploy.sh
 ```
+
+### Notes about the JWT secret
+
+The api server uses SECRET_ACCESS_TOKEN env var to get the secret for generating
+jwt tokens. It has a default value in .env for dev purposes.
+
+In production you should override it with your own secret.
+
+The jwt-key-gen.sh is a tool to generate a random key and used in Dockerfile. 
+It makes sure when you build the api server image a new random key is used.
+

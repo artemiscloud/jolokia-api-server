@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/nodejs-20:latest AS BUILD_IMAGE
+FROM registry.access.redhat.com/ubi8/nodejs-20:latest AS build-image
 
 ### BEGIN REMOTE SOURCE
 # Use the COPY instruction only inside the REMOTE SOURCE block
@@ -25,22 +25,18 @@ RUN yarn install  --network-timeout 1000000
 
 ## Build application
 RUN yarn build
+RUN NEWKEY=`/usr/src/app/jwt-key-gen.sh` && sed -i "s/^SECRET_ACCESS_TOKEN=.*/SECRET_ACCESS_TOKEN=$NEWKEY/" /usr/src/app/.env
 
 ## Gather productization dependencies
 RUN yarn install --network-timeout 1000000 --modules-folder node_modules_prod --production
 
 FROM registry.access.redhat.com/ubi8/nodejs-20-minimal:latest
 
-COPY --from=BUILD_IMAGE /usr/src/app/dist /usr/share/amq-spp/dist
-COPY --from=BUILD_IMAGE /usr/src/app/.env /usr/share/amq-spp/.env
-COPY --from=BUILD_IMAGE /usr/src/app/node_modules_prod /usr/share/amq-spp/node_modules
+COPY --from=build-image /usr/src/app/dist /usr/share/amq-spp/dist
+COPY --from=build-image /usr/src/app/.env /usr/share/amq-spp/.env
+COPY --from=build-image /usr/src/app/node_modules_prod /usr/share/amq-spp/node_modules
 
 WORKDIR /usr/share/amq-spp
-
-USER root
-
-RUN echo "node /usr/share/amq-spp/dist/app.js" > run.sh
-RUN chmod +x run.sh
 
 USER 1001
 
