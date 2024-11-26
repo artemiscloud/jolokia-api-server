@@ -6,7 +6,7 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
-  version: 0.1.1
+  version: 0.1.2
   description: |
     This document contains a list of currently available apis that
     can be used by the **activemq-artemis-self-provisioning plugin**
