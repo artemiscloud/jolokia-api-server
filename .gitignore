@@ -121,3 +121,11 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# vs code config
+.vscode
+
+
+# tmp dir
+tmp
+
