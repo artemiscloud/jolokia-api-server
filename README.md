@@ -1,3 +1,7 @@
+#### :warning:This project is now part of the ArkMQ initiative. This repository has been archived as all activities are now happening in the [corresponding ArkMQ repository](https://github.com/arkmq-org/activemq-artemis-jolokia-api-server). See [here](https://artemiscloud.io/community/transition/) for the ArkMQ transition details.
+
+---
+
 # Jolokia api-server
 
 The Jolokia api-server is an express js server that serves an OpenApi defined
